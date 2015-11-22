@@ -3,6 +3,7 @@
 
 #WRK
 WRK/tools/
+WRK/WRK.*
 
 # User-specific files
 *.suo
