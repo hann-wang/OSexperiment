@@ -5,6 +5,16 @@
 WRK/tools/
 WRK/WRK.*
 
+#Latex
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.pdf
+*.synctex
+
+
 # User-specific files
 *.suo
 *.user
