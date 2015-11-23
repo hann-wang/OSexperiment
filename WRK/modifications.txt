@@ -1,0 +1,25 @@
+Modified by Wang Han on Nov 23rd, 2015 
+
+Macros:
+[+] RB_RED
+[+] RB_BLACK
+[+] rb_parent(r)
+[+] rb_color(r)
+[+] rb_is_red(r)
+[+] rb_is_black(r)
+[+] rb_set_black(r)
+[+] rb_set_red(r)
+
+Functions:
+[+] rb_set_parent
+[+] rb_set_color
+[+] rb_link_node
+[+] __rb_rotate_left
+[+] __rb_rotate_right
+[+] rb_insert_color
+[+] __rb_erase_color
+[+] rb_erase
+[M] MiInsertNode
+[M] MiRemoveNode
+[-] MiRebalanceNode
+[-] MiPromoteNode
