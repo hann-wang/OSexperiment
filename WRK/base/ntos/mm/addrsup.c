@@ -62,11 +62,22 @@ extern MM_AVL_TABLE MmSectionBasedRoot;
 /////////////////////////////////////////////
 //Red Black Tree Functions Start Here
 /////////////////////////////////////////////
-static __inline void rb_set_parent( PMMADDRESS_NODE rb,PMMADDRESS_NODE p)
+static __inline void rb_set_parent(PMMADDRESS_NODE rb,PMMADDRESS_NODE p)
 {
     rb->u1.Parent = (PMMADDRESS_NODE)( rb_color(rb) + (unsigned long) p); 
-    //rb->u1.Parent = p;
 }
+static __inline void rb_set_color(PMMADDRESS_NODE rb, int color)
+{
+	rb->u1.Balance = color;
+}
+static __inline void rb_link_node(PMMADDRESS_NODE node, PMMADDRESS_NODE parent)
+{
+	rb_set_parent(node,parent);
+	rb_set_color(node,RB_RED);
+	node->LeftChild = 0;
+	node->RightChild = 0;
+}
+
 static void __rb_rotate_left(PMMADDRESS_NODE node, PMM_AVL_TABLE root)
 {
     PMMADDRESS_NODE right = node->RightChild;
@@ -113,10 +124,70 @@ static void __rb_rotate_right(PMMADDRESS_NODE node, PMM_AVL_TABLE root)
     rb_set_parent(node, left);
 }
 
-static void __rb_erase_color(PMMADDRESS_NODE node,PMMADDRESS_NODE parent,
-   PMM_AVL_TABLE root)
+void rb_insert_color(PMMADDRESS_NODE NodeToInsert,PMM_AVL_TABLE root)
 {
+    PMMADDRESS_NODE parent,gparent;
 
+    while((parent=rb_parent(NodeToInsert)) && rb_is_red(parent) )
+    {
+        gparent = rb_parent(parent);
+
+        if(parent == gparent->LeftChild)
+        {
+            {
+                register PMMADDRESS_NODE uncle = gparent->RightChild;
+                if ( uncle && rb_is_red ( uncle ))
+                {
+                    rb_set_black(uncle);
+                    rb_set_black(parent);
+                    rb_set_red(gparent);
+					NodeToInsert = gparent;
+                    continue;
+                }
+            }
+            if(parent->RightChild == NodeToInsert)
+            {
+                register PMMADDRESS_NODE tmp;
+                __rb_rotate_left(parent,root);
+                tmp = parent;
+                parent = NodeToInsert;
+                NodeToInsert = tmp;
+            }
+            rb_set_black(parent);
+            rb_set_red(gparent);
+            __rb_rotate_right(gparent,root);
+        } else {
+            {
+                register PMMADDRESS_NODE uncle = gparent->LeftChild;
+                if (uncle && rb_is_red(uncle))
+                {
+                    rb_set_black(uncle);
+					rb_set_black(parent);
+                    rb_set_red(gparent);
+                    NodeToInsert = gparent;
+                    continue;
+                }
+            }
+
+            if (parent->LeftChild == NodeToInsert)
+            {
+                register PMMADDRESS_NODE tmp;
+                __rb_rotate_right(parent, root);
+                tmp = parent;
+                parent = NodeToInsert;
+                NodeToInsert = tmp;
+            }
+
+            rb_set_black(parent);
+            rb_set_red(gparent);
+            __rb_rotate_left(gparent,root);
+        }
+    }
+	rb_set_black(root->BalancedRoot.RightChild);
+}
+
+static void __rb_erase_color(PMMADDRESS_NODE node, PMMADDRESS_NODE parent, PMM_AVL_TABLE root)
+{
     PMMADDRESS_NODE other;
     while ((!node || rb_is_black(node)) && node != root->BalancedRoot.RightChild)
     {
@@ -146,7 +217,7 @@ static void __rb_erase_color(PMMADDRESS_NODE node,PMMADDRESS_NODE parent,
                     __rb_rotate_right(other, root);
                     other = parent->RightChild;
                 }
-                other->u1.Balance = rb_color(parent);
+                rb_set_color(other, rb_color(parent));
                 rb_set_black(parent);
                 rb_set_black(other->RightChild);
                 __rb_rotate_left(parent, root);
@@ -180,7 +251,7 @@ static void __rb_erase_color(PMMADDRESS_NODE node,PMMADDRESS_NODE parent,
                     __rb_rotate_left(other, root);
                     other = parent->LeftChild;
                 }
-                other->u1.Balance=parent->u1.Balance;
+                rb_set_color(other, rb_color(parent));
                 rb_set_black(parent);
                 rb_set_black(other->LeftChild);
                 __rb_rotate_right(parent, root);
@@ -191,70 +262,6 @@ static void __rb_erase_color(PMMADDRESS_NODE node,PMMADDRESS_NODE parent,
     }
     if (node)
         rb_set_black(node);
-
-}
-
-
-void rb_insert_color(PMMADDRESS_NODE NodeToInsert,PMM_AVL_TABLE Table)
-{
-    PMMADDRESS_NODE parent,gparent;
-
-    while((parent=rb_parent(NodeToInsert)) && rb_is_red(parent) )
-    {
-        gparent = rb_parent(parent);
-
-        if(parent == gparent->LeftChild)
-        {
-            {
-                register PMMADDRESS_NODE uncle = gparent->RightChild;
-                if ( uncle && rb_is_red ( uncle ))
-                {
-                    rb_set_black(uncle);
-                    rb_set_black(parent);
-                    rb_set_red(gparent);
-					NodeToInsert = gparent;
-                    continue;
-                }
-            }
-            if(parent->RightChild == NodeToInsert)
-            {
-                register PMMADDRESS_NODE tmp;
-                __rb_rotate_left(parent,Table);
-                tmp = parent;
-                parent = NodeToInsert;
-                NodeToInsert = tmp;
-            }
-            rb_set_black(parent);
-            rb_set_red(gparent);
-            __rb_rotate_right(gparent,Table);
-        } else {
-            {
-                register PMMADDRESS_NODE uncle = gparent->LeftChild;
-                if (uncle && rb_is_red(uncle))
-                {
-                    rb_set_black(uncle);
-					rb_set_black(parent);
-                    rb_set_red(gparent);
-                    NodeToInsert = gparent;
-                    continue;
-                }
-            }
-
-            if (parent->LeftChild == NodeToInsert)
-            {
-                register PMMADDRESS_NODE tmp;
-                __rb_rotate_right(parent, Table);
-                tmp = parent;
-                parent = NodeToInsert;
-                NodeToInsert = tmp;
-            }
-
-            rb_set_black(parent);
-            rb_set_red(gparent);
-            __rb_rotate_left(gparent,Table);
-        }
-    }
-	rb_set_black(Table->BalancedRoot.RightChild);
 }
 
 void rb_erase(PMMADDRESS_NODE NodeToDelete, PMM_AVL_TABLE Table)
@@ -271,53 +278,59 @@ void rb_erase(PMMADDRESS_NODE NodeToDelete, PMM_AVL_TABLE Table)
         PMMADDRESS_NODE old,left;
         old = NodeToDelete;
         NodeToDelete = NodeToDelete->RightChild;
-        while((left=NodeToDelete->LeftChild)!=NULL)
+        while((left=NodeToDelete->LeftChild)!=0)
             NodeToDelete = left;
 
-        if(rb_parent(old))  {
+        if(rb_parent(old))
+		{
             if(rb_parent(old)->LeftChild == old)
                 rb_parent(old)->LeftChild = NodeToDelete;
             else
 				rb_parent(old)->RightChild = NodeToDelete;
-					}	else
-						Table->BalancedRoot.RightChild = NodeToDelete;
+		}
+		else
+			Table->BalancedRoot.RightChild = NodeToDelete;
 				
-					child = NodeToDelete->RightChild;
-					parent = rb_parent(NodeToDelete);
-					color = rb_color(NodeToDelete);
+		child = NodeToDelete->RightChild;
+		parent = rb_parent(NodeToDelete);
+		color = rb_color(NodeToDelete);
 			
-					if (parent == old) {
-						parent = NodeToDelete;
-					} else {
-						if (child)
-							rb_set_parent(child, parent);
-						parent->LeftChild = child;
-			
-						NodeToDelete->RightChild = old->RightChild;
-						rb_set_parent(old->RightChild, NodeToDelete);
-					}
+		if (parent == old)
+		{
+			parent = NodeToDelete;
+		}
+		else
+		{
+			if (child)
+				rb_set_parent(child, parent);
+			parent->LeftChild = child;
+
+			NodeToDelete->RightChild = old->RightChild;
+			rb_set_parent(old->RightChild, NodeToDelete);
+		}
+		
+		rb_set_parent(NodeToDelete, rb_parent(old));
+		rb_set_color(NodeToDelete, rb_color(old));
+		NodeToDelete->LeftChild = old->LeftChild;
+		rb_set_parent(old->LeftChild, NodeToDelete);
+	
+		goto color;
+	}
 					
-						NodeToDelete->u1 = old->u1;
-						NodeToDelete->LeftChild = old->LeftChild;
-						rb_set_parent(old->LeftChild, NodeToDelete);
-					
-						goto color;
-					}
-					
-					parent = rb_parent(NodeToDelete);
-					color = rb_color(NodeToDelete);
-					
-					if (child)
-						rb_set_parent(child, parent);
-					if (parent)
-					{
-						if (parent->LeftChild == NodeToDelete)
-							parent->LeftChild = child;
-						else
-							parent->RightChild = child;
-					}
-					else
-						Table->BalancedRoot.RightChild = child;
+	parent = rb_parent(NodeToDelete);
+	color = rb_color(NodeToDelete);
+	
+	if (child)
+		rb_set_parent(child, parent);
+	if (parent)
+	{
+		if (parent->LeftChild == NodeToDelete)
+			parent->LeftChild = child;
+		else
+			parent->RightChild = child;
+	}
+	else
+		Table->BalancedRoot.RightChild = child;
 
 color:
     if (color == RB_BLACK)
@@ -334,16 +347,6 @@ MiFindNodeOrParent (
     IN PMM_AVL_TABLE Table,
     IN ULONG_PTR StartingVpn,
     OUT PMMADDRESS_NODE *NodeOrParent
-    );
-
-VOID
-MiPromoteNode (
-    IN PMMADDRESS_NODE C
-    );
-
-ULONG
-MiRebalanceNode (
-    IN PMMADDRESS_NODE S
     );
 
 PMMADDRESS_NODE
@@ -734,361 +737,6 @@ Return Value:
 
 
 VOID
-MiPromoteNode (
-    IN PMMADDRESS_NODE C
-    )
-
-/*++
-
-Routine Description:
-
-    This routine performs the fundamental adjustment required for balancing
-    the binary tree during insert and delete operations.  Simply put, the
-    designated node is promoted in such a way that it rises one level in
-    the tree and its parent drops one level in the tree, becoming now the
-    child of the designated node.  Generally the path length to the subtree
-    "opposite" the original parent.  Balancing occurs as the caller chooses
-    which nodes to promote according to the balanced tree algorithms from
-    Knuth.
-
-    This is not the same as a splay operation, typically a splay "promotes"
-    a designated node twice.
-
-    Note that the pointer to the root node of the tree is assumed to be
-    contained in a MMADDRESS_NODE structure itself, to allow the
-    algorithms below to change the root of the tree without checking
-    for special cases.  Note also that this is an internal routine,
-    and the caller guarantees that it never requests to promote the
-    root itself.
-
-    This routine only updates the tree links; the caller must update
-    the balance factors as appropriate.
-
-Arguments:
-
-    C - pointer to the child node to be promoted in the tree.
-
-Return Value:
-
-    None.
-
---*/
-
-{
-    PMMADDRESS_NODE P;
-    PMMADDRESS_NODE G;
-
-    //
-    // Capture the current parent and grandparent (may be the root).
-    //
-
-    P = SANITIZE_PARENT_NODE (C->u1.Parent);
-    G = SANITIZE_PARENT_NODE (P->u1.Parent);
-
-    //
-    // Break down the promotion into two cases based upon whether C
-    // is a left or right child.
-    //
-
-    if (P->LeftChild == C) {
-
-        //
-        // This promotion looks like this:
-        //
-        //          G           G
-        //          |           |
-        //          P           C
-        //         / \   =>    / \
-        //        C   z       x   P
-        //       / \             / \
-        //      x   y           y   z
-        //
-
-        P->LeftChild = C->RightChild;
-
-        if (P->LeftChild != NULL) {
-
-            P->LeftChild->u1.Parent = MI_MAKE_PARENT (P, P->LeftChild->u1.Balance);
-        }
-
-        C->RightChild = P;
-
-        //
-        // Fall through to update parent and G <-> C relationship in
-        // common code.
-        //
-
-    }
-    else {
-
-        ASSERT(P->RightChild == C);
-
-        //
-        // This promotion looks like this:
-        //
-        //        G               G
-        //        |               |
-        //        P               C
-        //       / \     =>      / \
-        //      x   C           P   z
-        //         / \         / \
-        //        y   z       x   y
-        //
-
-        P->RightChild = C->LeftChild;
-
-        if (P->RightChild != NULL) {
-            P->RightChild->u1.Parent = MI_MAKE_PARENT (P, P->RightChild->u1.Balance);
-        }
-
-        C->LeftChild = P;
-    }
-
-    //
-    // Update parent of P, for either case above.
-    //
-
-    P->u1.Parent = MI_MAKE_PARENT (C, P->u1.Balance);
-
-    //
-    // Finally update G <-> C links for either case above.
-    //
-
-    if (G->LeftChild == P) {
-        G->LeftChild = C;
-    }
-    else {
-        ASSERT(G->RightChild == P);
-        G->RightChild = C;
-    }
-    C->u1.Parent = MI_MAKE_PARENT (G, C->u1.Balance);
-}
-
-
-ULONG
-MiRebalanceNode (
-    IN PMMADDRESS_NODE S
-    )
-
-/*++
-
-Routine Description:
-
-    This routine performs a rebalance around the input node S, for which the
-    Balance factor has just effectively become +2 or -2.  When called, the
-    Balance factor still has a value of +1 or -1, but the respective longer
-    side has just become one longer as the result of an insert or delete
-    operation.
-
-    This routine effectively implements steps A7.iii (test for Case 1 or
-    Case 2) and steps A8 and A9 of Knuth's balanced insertion algorithm,
-    plus it handles Case 3 identified in the delete section, which can
-    only happen on deletes.
-
-    The trick is, to convince yourself that while traveling from the
-    insertion point at the bottom of the tree up, that there are only
-    these two cases, and that when traveling up from the deletion point,
-    that there are just these three cases.  Knuth says it is obvious!
-
-Arguments:
-
-    S - pointer to the node which has just become unbalanced.
-
-Return Value:
-
-    TRUE if Case 3 was detected (causes delete algorithm to terminate).
-
-Environment:
-
-    Kernel mode.  The PFN lock is held for some of the tables.
-
---*/
-
-{
-    PMMADDRESS_NODE R, P;
-    SCHAR a;
-
-    PRINT("rebalancing node %p bal=%x start=%x end=%x\n",
-                    S,
-                    S->u1.Balance,
-                    S->StartingVpn,
-                    S->EndingVpn);
-
-    //
-    // The parent node is never the argument node.
-    //
-
-    ASSERT (SANITIZE_PARENT_NODE(S->u1.Parent) != S);
-
-    //
-    // Capture which side is unbalanced.
-    //
-
-    a = (SCHAR) S->u1.Balance;
-
-    if (a == +1) {
-        R = S->RightChild;
-    }
-    else {
-        R = S->LeftChild;
-    }
-
-    //
-    // If the balance of R and S are the same (Case 1 in Knuth) then a single
-    // promotion of R will do the single rotation.  (Step A8, A10)
-    //
-    // Here is a diagram of the Case 1 transformation, for a == +1 (a mirror
-    // image transformation occurs when a == -1), and where the subtree
-    // heights are h and h+1 as shown (++ indicates the node out of balance):
-    //
-    //                  |                   |
-    //                  S++                 R
-    //                 / \                 / \
-    //               (h)  R+     ==>      S  (h+1)
-    //                   / \             / \
-    //                 (h) (h+1)       (h) (h)
-    //
-    // Note that on an insert we can hit this case by inserting an item in the
-    // right subtree of R.  The original height of the subtree before the insert
-    // was h+2, and it is still h+2 after the rebalance, so insert rebalancing
-    // may terminate.
-    //
-    // On a delete we can hit this case by deleting a node from the left subtree
-    // of S.  The height of the subtree before the delete was h+3, and after the
-    // rebalance it is h+2, so rebalancing must continue up the tree.
-    //
-
-    if ((SCHAR) R->u1.Balance == a) {
-
-        MiPromoteNode (R);
-        R->u1.Balance = 0;
-        S->u1.Balance = 0;
-
-        return FALSE;
-    }
-
-    //
-    // Otherwise, we have to promote the appropriate child of R twice (Case 2
-    // in Knuth).  (Step A9, A10)
-    //
-    // Here is a diagram of the Case 2 transformation, for a == +1 (a mirror
-    // image transformation occurs when a == -1), and where the subtree
-    // heights are h and h-1 as shown.  There are actually two minor subcases,
-    // differing only in the original balance of P (++ indicates the node out
-    // of balance).
-    //
-    //                  |                   |
-    //                  S++                 P
-    //                 / \                 / \
-    //                /   \               /   \
-    //               /     \             /     \
-    //             (h)      R-   ==>    S-      R
-    //                     / \         / \     / \
-    //                    P+ (h)     (h)(h-1)(h) (h)
-    //                   / \
-    //               (h-1) (h)
-    //
-    //
-    //                  |                   |
-    //                  S++                 P
-    //                 / \                 / \
-    //                /   \               /   \
-    //               /     \             /     \
-    //             (h)      R-   ==>    S       R+
-    //                     / \         / \     / \
-    //                    P- (h)     (h) (h)(h-1)(h)
-    //                   / \
-    //                 (h) (h-1)
-    //
-    // Note that on an insert we can hit this case by inserting an item in the
-    // left subtree of R.  The original height of the subtree before the insert
-    // was h+2, and it is still h+2 after the rebalance, so insert rebalancing
-    // may terminate.
-    //
-    // On a delete we can hit this case by deleting a node from the left subtree
-    // of S.  The height of the subtree before the delete was h+3, and after the
-    // rebalance it is h+2, so rebalancing must continue up the tree.
-    //
-
-    if ((SCHAR) R->u1.Balance == -a) {
-
-        //
-        // Pick up the appropriate child P for the double rotation (Link(-a,R)).
-        //
-
-        if (a == 1) {
-            P = R->LeftChild;
-        }
-        else {
-            P = R->RightChild;
-        }
-
-        //
-        // Promote him twice to implement the double rotation.
-        //
-
-        MiPromoteNode (P);
-        MiPromoteNode (P);
-
-        //
-        // Now adjust the balance factors.
-        //
-
-        S->u1.Balance = 0;
-        R->u1.Balance = 0;
-        if ((SCHAR) P->u1.Balance == a) {
-            PRINT("REBADJ A: Node %p, Bal %x -> %x\n", S, S->u1.Balance, -a);
-            COUNT_BALANCE_MAX ((SCHAR)-a);
-            S->u1.Balance = (ULONG_PTR) -a;
-        }
-        else if ((SCHAR) P->u1.Balance == -a) {
-            PRINT("REBADJ B: Node %p, Bal %x -> %x\n", R, R->u1.Balance, a);
-            COUNT_BALANCE_MAX ((SCHAR)a);
-            R->u1.Balance = (ULONG_PTR) a;
-        }
-
-        P->u1.Balance = 0;
-        return FALSE;
-    }
-
-    //
-    // Otherwise this is Case 3 which can only happen on Delete (identical
-    // to Case 1 except R->u1.Balance == 0).  We do a single rotation, adjust
-    // the balance factors appropriately, and return TRUE.  Note that the
-    // balance of S stays the same.
-    //
-    // Here is a diagram of the Case 3 transformation, for a == +1 (a mirror
-    // image transformation occurs when a == -1), and where the subtree
-    // heights are h and h+1 as shown (++ indicates the node out of balance):
-    //
-    //                  |                   |
-    //                  S++                 R-
-    //                 / \                 / \
-    //               (h)  R      ==>      S+ (h+1)
-    //                   / \             / \
-    //                (h+1)(h+1)       (h) (h+1)
-    //
-    // This case can not occur on an insert, because it is impossible for
-    // a single insert to balance R, yet somehow grow the right subtree of
-    // S at the same time.  As we move up the tree adjusting balance factors
-    // after an insert, we terminate the algorithm if a node becomes balanced,
-    // because that means the subtree length did not change!
-    //
-    // On a delete we can hit this case by deleting a node from the left
-    // subtree of S.  The height of the subtree before the delete was h+3,
-    // and after the rebalance it is still h+3, so rebalancing may terminate
-    // in the delete path.
-    //
-
-    MiPromoteNode (R);
-    PRINT("REBADJ C: Node %p, Bal %x -> %x\n", R, R->u1.Balance, -a);
-    COUNT_BALANCE_MAX ((SCHAR)-a);
-    R->u1.Balance = -a;
-    return TRUE;
-}
-
-
-VOID
 FASTCALL
 MiRemoveNode (
     IN PMMADDRESS_NODE NodeToDelete,
@@ -1389,8 +1037,8 @@ Environment:
                                        NodeToInsert->StartingVpn,
                                        &NodeOrParent);
 
-    NodeToInsert->LeftChild = NULL;
-    NodeToInsert->RightChild = NULL;
+    NodeToInsert->LeftChild = 0;
+    NodeToInsert->RightChild = 0;
 
 	Table->NumberGenericTableElements += 1;
 
@@ -1410,8 +1058,8 @@ Environment:
 		{
 			NodeOrParent->RightChild = NodeToInsert;
 		}
-		rb_set_parent(NodeToInsert,NodeOrParent);
-		NodeToInsert->u1.Balance = RB_RED;
+		
+		rb_link_node(NodeToInsert, NodeOrParent);
 		rb_insert_color(NodeToInsert, Table);
 	}
 	
