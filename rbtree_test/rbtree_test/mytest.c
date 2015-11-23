@@ -1,6 +1,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include"rbtree.h"
+#define N 10
 
 struct mytype {
 	struct rb_node my_node;
@@ -54,7 +55,7 @@ void my_delete(struct rb_root *root, int num)
 {
 	struct mytype *data = my_search(root, num);
 	if (!data) {
-		fprintf(stderr, "Not found %d.\n", num);
+		fprintf(stderr, "Not found: %d\n", num);
 		return;
 	}
 
@@ -72,40 +73,35 @@ void print_rbtree(struct rb_root *tree)
 	printf("\n");
 }
 
-void main(int argc, char *argv[])
+void main()
 {
 	struct rb_root mytree = RB_ROOT;
 	int i, ret, num;
 	struct mytype *tmp;
 
-	if (argc < 2) {
-		fprintf(stderr, "Usage: %s num\n", argv[0]);
-		exit(-1);
-	}
-
-	num = atoi(argv[1]);
+	num = N;
 
 	printf("Please enter %d integers:\n", num);
 	for (i = 0; i < num; i++) {
 		tmp = malloc(sizeof(struct mytype));
 		if (!tmp)
-			perror("Allocate dynamic memory");
+			perror("Failed to allocate dynamic memory!");
 
 		scanf("%d", &tmp->num);
 
 		ret = my_insert(&mytree, tmp);
 		if (ret < 0) {
-			fprintf(stderr, "The %d already exists.\n", tmp->num);
+			fprintf(stderr, "%d already exists.\n", tmp->num);
 			free(tmp);
 		}
 	}
 
-	printf("\nthe first test\n");
+	printf("\nTraversal before deleting 21:\n");
 	print_rbtree(&mytree);
 
 	my_delete(&mytree, 21);
 
-	printf("\nthe second test\n");
+	printf("\nTraversal after deleting 21:\n");
 	print_rbtree(&mytree);
 
 	return;
